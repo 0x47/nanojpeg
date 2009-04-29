@@ -1,0 +1,2 @@
+@set PSDK_LIBPATH="C:\Program Files\Microsoft Visual Studio 8\VC\PlatformSDK\Lib"
+crinkler /OUT:nanojpeg_crinkler.exe /REPORT:nanojpeg_crinkler.html /LIBPATH:%PSDK_LIBPATH% /SUBSYSTEM:CONSOLE /UNSAFEIMPORT /TRANSFORM:CALLS /COMPMODE:SLOW /PRIORITY:BELOWNORMAL Release\main_win32.obj Release\nanojpeg.obj kernel32.lib
