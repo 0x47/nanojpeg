@@ -1,5 +1,5 @@
 // NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.0 (2009-04-29)
+// version 1.1 (2010-03-05)
 // by Martin J. Fiedler <martin.fiedler@gmx.net>
 //
 // This software is published under the terms of KeyJ's Research License,
@@ -212,10 +212,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     fseek(f, 0, SEEK_END);
-    size = ftell(f);
+    size = (int) ftell(f);
     buf = malloc(size);
     fseek(f, 0, SEEK_SET);
-    fread(buf, 1, size, f);
+    size = (int) fread(buf, 1, size, f);
     fclose(f);
 
     njInit();
@@ -635,7 +635,7 @@ static int njGetVLC(nj_vlc_code_t* vlc, unsigned char* code) {
 }
 
 NJ_INLINE void njDecodeBlock(nj_component_t* c, unsigned char* out) {
-    unsigned char code;
+    unsigned char code = 0;
     int value, coef = 0;
     njFillMem(nj.block, 0, sizeof(nj.block));
     c->dcpred += njGetVLC(&nj.vlctab[c->dctabsel][0], NULL);
@@ -671,25 +671,28 @@ NJ_INLINE void njDecodeScan(void) {
     }
     if (nj.pos[0] || (nj.pos[1] != 63) || nj.pos[2]) njThrow(NJ_UNSUPPORTED);
     njSkip(nj.length);
-    for (mby = 0;  mby < nj.mbheight;  ++mby)
-        for (mbx = 0;  mbx < nj.mbwidth;  ++mbx) {
-            for (i = 0, c = nj.comp;  i < nj.ncomp;  ++i, ++c)
-                for (sby = 0;  sby < c->ssy;  ++sby)
-                    for (sbx = 0;  sbx < c->ssx;  ++sbx) {
-                        njDecodeBlock(c, &c->pixels[((mby * c->ssy + sby) * c->stride + mbx * c->ssx + sbx) << 3]);
-                        if (nj.error)
-                        return;
-                    }
-            if (nj.rstinterval && !(--rstcount)) {
-                njByteAlign();
-                i = njGetBits(16);
-                if (((i & 0xFFF8) != 0xFFD0) || ((i & 7) != nextrst)) njThrow(NJ_SYNTAX_ERROR);
-                nextrst = (nextrst + 1) & 7;
-                rstcount = nj.rstinterval;
-                for (i = 0;  i < 3;  ++i)
-                    nj.comp[i].dcpred = 0;
-            }
+    for (mbx = mby = 0;;) {
+        for (i = 0, c = nj.comp;  i < nj.ncomp;  ++i, ++c)
+            for (sby = 0;  sby < c->ssy;  ++sby)
+                for (sbx = 0;  sbx < c->ssx;  ++sbx) {
+                    njDecodeBlock(c, &c->pixels[((mby * c->ssy + sby) * c->stride + mbx * c->ssx + sbx) << 3]);
+                    if (nj.error)
+                    return;
+                }
+        if (++mbx >= nj.mbwidth) {
+            mbx = 0;
+            if (++mby >= nj.mbheight) break;
         }
+        if (nj.rstinterval && !(--rstcount)) {
+            njByteAlign();
+            i = njGetBits(16);
+            if (((i & 0xFFF8) != 0xFFD0) || ((i & 7) != nextrst)) njThrow(NJ_SYNTAX_ERROR);
+            nextrst = (nextrst + 1) & 7;
+            rstcount = nj.rstinterval;
+            for (i = 0;  i < 3;  ++i)
+                nj.comp[i].dcpred = 0;
+        }
+    }
     nj.error = __NJ_FINISHED;
 }
 
