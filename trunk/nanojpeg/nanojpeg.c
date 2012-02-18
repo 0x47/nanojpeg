@@ -1,5 +1,5 @@
 // NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.1 (2010-03-05)
+// version 1.2 (2012-02-18)
 // by Martin J. Fiedler <martin.fiedler@gmx.net>
 //
 // This software is published under the terms of KeyJ's Research License,
@@ -451,7 +451,9 @@ static int njShowBits(int bits) {
                 unsigned char marker = *nj.pos++;
                 nj.size--;
                 switch (marker) {
-                    case 0:    break;
+                    case 0x00:
+                    case 0xFF:
+                        break;
                     case 0xD9: nj.size = 0; break;
                     default:
                         if ((marker & 0xF8) != 0xD0)
