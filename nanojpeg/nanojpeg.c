@@ -1,5 +1,5 @@
 // NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.2 (2012-02-18)
+// version 1.3 (2012-03-05)
 // by Martin J. Fiedler <martin.fiedler@gmx.net>
 //
 // This software is published under the terms of KeyJ's Research License,
@@ -539,6 +539,10 @@ NJ_INLINE void njDecodeSOF(void) {
         if (c->ssx > ssxmax) ssxmax = c->ssx;
         if (c->ssy > ssymax) ssymax = c->ssy;
     }
+    if (nj.ncomp == 1) {
+        c = nj.comp;
+        c->ssx = c->ssy = ssxmax = ssymax = 1;
+    }
     nj.mbsizex = ssxmax << 3;
     nj.mbsizey = ssymax << 3;
     nj.mbwidth = (nj.width + nj.mbsizex - 1) / nj.mbsizex;
@@ -678,8 +682,7 @@ NJ_INLINE void njDecodeScan(void) {
             for (sby = 0;  sby < c->ssy;  ++sby)
                 for (sbx = 0;  sbx < c->ssx;  ++sbx) {
                     njDecodeBlock(c, &c->pixels[((mby * c->ssy + sby) * c->stride + mbx * c->ssx + sbx) << 3]);
-                    if (nj.error)
-                    return;
+                    njCheckError();
                 }
         if (++mbx >= nj.mbwidth) {
             mbx = 0;
@@ -802,9 +805,9 @@ NJ_INLINE void njConvert() {
         #if NJ_CHROMA_FILTER
             while ((c->width < nj.width) || (c->height < nj.height)) {
                 if (c->width < nj.width) njUpsampleH(c);
-                if (nj.error) return;
+                njCheckError();
                 if (c->height < nj.height) njUpsampleV(c);
-                if (nj.error) return;
+                njCheckError();
             }
         #else
             if ((c->width < nj.width) || (c->height < nj.height))
