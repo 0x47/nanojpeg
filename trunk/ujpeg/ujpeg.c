@@ -1,6 +1,6 @@
 // uJPEG (MicroJPEG) -- KeyJ's Small Baseline JPEG Decoder
 // based on NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.2 (2012-02-19)
+// version 1.3 (2012-03-05)
 // by Martin J. Fiedler <martin.fiedler@gmx.net>
 //
 // This software is published under the terms of KeyJ's Research License,
@@ -301,6 +301,10 @@ UJ_INLINE void ujDecodeSOF(ujContext *uj) {
         uj->qtused |= 1 << c->qtsel;
         if (c->ssx > ssxmax) ssxmax = c->ssx;
         if (c->ssy > ssymax) ssymax = c->ssy;
+    }
+    if (uj->ncomp == 1) {
+        c = uj->comp;
+        c->ssx = c->ssy = ssxmax = ssymax = 1;
     }
     uj->mbsizex = ssxmax << 3;
     uj->mbsizey = ssymax << 3;
