@@ -12,6 +12,8 @@ static void putnum(char *c, int num) {
     } while ((num /= 10));
 }
 
+#pragma code_seg(".main")  // helps Crinkler a bit
+
 void mainCRTStartup(void) {
     char *argv[3], *buf = GetCommandLine();
     enum { S_WHITESPACE, S_PARAM, S_QUOTE } state = S_WHITESPACE;

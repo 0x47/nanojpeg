@@ -1,13 +1,17 @@
-attrib -h *.*
-del *.ncb
-del *.pdb
-del *.suo
+rmdir /s /q Debug
+rmdir /s /q Release
+rmdir /s /q ReleaseNoLIBC
+rmdir /s /q ipch
+del *.o
+del *_debug
 del *.ilk
+del *.pdb
 del *.user
-del *_crinkler.html
+del /ah *.suo
+del *.suo
+del *.sdf
+del *.ncb
 del *_Debug.exe
-del /q Debug\*.*
-del /q Release\*.*
-rd Debug
-rd Release
-del nanojpeg_out.*
+del nanojpeg.exe
+del nanojpeg_out.ppm
+del crinkler_report.html
