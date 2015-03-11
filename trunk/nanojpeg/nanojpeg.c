@@ -797,7 +797,7 @@ NJ_INLINE void njUpsample(nj_component_t* c) {
 
 #endif
 
-NJ_INLINE void njConvert() {
+NJ_INLINE void njConvert(void) {
     int i;
     nj_component_t* c;
     for (i = 0, c = nj.comp;  i < nj.ncomp;  ++i, ++c) {
