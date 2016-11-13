@@ -222,9 +222,11 @@ int main(int argc, char* argv[]) {
 
     njInit();
     if (njDecode(buf, size)) {
+        free((void*)buf);
         printf("Error decoding the input file.\n");
         return 1;
     }
+    free((void*)buf);
 
     f = fopen((argc > 2) ? argv[2] : (njIsColor() ? "nanojpeg_out.ppm" : "nanojpeg_out.pgm"), "wb");
     if (!f) {
@@ -515,6 +517,7 @@ NJ_INLINE void njDecodeSOF(void) {
     int i, ssxmax = 0, ssymax = 0;
     nj_component_t* c;
     njDecodeLength();
+    njCheckError();
     if (nj.length < 9) njThrow(NJ_SYNTAX_ERROR);
     if (nj.pos[0] != 8) njThrow(NJ_UNSUPPORTED);
     nj.height = njDecode16(nj.pos+1);
@@ -568,6 +571,7 @@ NJ_INLINE void njDecodeDHT(void) {
     nj_vlc_code_t *vlc;
     static unsigned char counts[16];
     njDecodeLength();
+    njCheckError();
     while (nj.length >= 17) {
         i = nj.pos[0];
         if (i & 0xEC) njThrow(NJ_SYNTAX_ERROR);
@@ -607,6 +611,7 @@ NJ_INLINE void njDecodeDQT(void) {
     int i;
     unsigned char *t;
     njDecodeLength();
+    njCheckError();
     while (nj.length >= 65) {
         i = nj.pos[0];
         if (i & 0xFC) njThrow(NJ_SYNTAX_ERROR);
@@ -621,6 +626,7 @@ NJ_INLINE void njDecodeDQT(void) {
 
 NJ_INLINE void njDecodeDRI(void) {
     njDecodeLength();
+    njCheckError();
     if (nj.length < 2) njThrow(NJ_SYNTAX_ERROR);
     nj.rstinterval = njDecode16(nj.pos);
     njSkip(nj.length);
@@ -666,6 +672,7 @@ NJ_INLINE void njDecodeScan(void) {
     int rstcount = nj.rstinterval, nextrst = 0;
     nj_component_t* c;
     njDecodeLength();
+    njCheckError();
     if (nj.length < (4 + 2 * nj.ncomp)) njThrow(NJ_SYNTAX_ERROR);
     if (nj.pos[0] != nj.ncomp) njThrow(NJ_UNSUPPORTED);
     njSkip(1);
