@@ -1,6 +1,6 @@
 LD = $(CXX)
 
-GENERIC_CFLAGS = -Wall -Wextra -pedantic -Werror -O3 -march=native
+GENERIC_CFLAGS = -Wall -Wextra -pedantic -Werror -Wno-shift-negative-value -O3 -march=native
 CFLAGS += -std=c99 $(GENERIC_CFLAGS)
 CXXFLAGS += $(GENERIC_CFLAGS)
 
