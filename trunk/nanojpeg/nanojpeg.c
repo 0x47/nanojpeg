@@ -1,5 +1,5 @@
 // NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.3.3 (2016-11-13)
+// version 1.3.4 (2016-11-14)
 // Copyright (c) 2009-2016 Martin J. Fiedler <martin.fiedler@gmx.net>
 // published under the terms of the MIT license
 //
@@ -525,6 +525,7 @@ NJ_INLINE void njDecodeSOF(void) {
     if (nj.pos[0] != 8) njThrow(NJ_UNSUPPORTED);
     nj.height = njDecode16(nj.pos+1);
     nj.width = njDecode16(nj.pos+3);
+    if (!nj.width || !nj.height) njThrow(NJ_SYNTAX_ERROR);
     nj.ncomp = nj.pos[5];
     njSkip(6);
     switch (nj.ncomp) {
