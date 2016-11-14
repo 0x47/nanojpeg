@@ -1,21 +1,27 @@
 // uJPEG (MicroJPEG) -- KeyJ's Small Baseline JPEG Decoder
 // based on NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.3 (2012-03-05)
-// by Martin J. Fiedler <martin.fiedler@gmx.net>
+// version 1.3.5 (2016-11-14)
+// Copyright (c) 2009-2016 Martin J. Fiedler <martin.fiedler@gmx.net>
+// published under the terms of the MIT license
 //
-// This software is published under the terms of KeyJ's Research License,
-// version 0.2. Usage of this software is subject to the following conditions:
-// 0. There's no warranty whatsoever. The author(s) of this software can not
-//    be held liable for any damages that occur when using this software.
-// 1. This software may be used freely for both non-commercial and commercial
-//    purposes.
-// 2. This software may be redistributed freely as long as no fees are charged
-//    for the distribution and this license information is included.
-// 3. This software may be modified freely except for this license information,
-//    which must not be changed in any way.
-// 4. If anything other than configuration, indentation or comments have been
-//    altered in the code, the original author(s) must receive a copy of the
-//    modified code.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +43,10 @@
 #else
     #define UJ_INLINE static inline
     #define UJ_FORCE_INLINE static inline
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 typedef struct _uj_code {
@@ -276,10 +286,12 @@ UJ_INLINE void ujDecodeSOF(ujContext *uj) {
     int i, ssxmax = 0, ssymax = 0, size;
     ujComponent* c;
     ujDecodeLength(uj);
+    ujCheckError();
     if (uj->length < 9) ujThrow(UJ_SYNTAX_ERROR);
     if (uj->pos[0] != 8) ujThrow(UJ_UNSUPPORTED);
     uj->height = ujDecode16(uj->pos+1);
     uj->width = ujDecode16(uj->pos+3);
+    if (!uj->width || !uj->height) ujThrow(UJ_SYNTAX_ERROR);
     uj->ncomp = uj->pos[5];
     ujSkip(uj, 6);
     switch (uj->ncomp) {
@@ -312,13 +324,12 @@ UJ_INLINE void ujDecodeSOF(ujContext *uj) {
     uj->mbheight = (uj->height + uj->mbsizey - 1) / uj->mbsizey;
     for (i = 0, c = uj->comp;  i < uj->ncomp;  ++i, ++c) {
         c->width = (uj->width * c->ssx + ssxmax - 1) / ssxmax;
-        c->stride = (c->width + 7) & 0x7FFFFFF8;
         c->height = (uj->height * c->ssy + ssymax - 1) / ssymax;
-        c->stride = uj->mbwidth * uj->mbsizex * c->ssx / ssxmax;
+        c->stride = uj->mbwidth * c->ssx << 3;
         if (((c->width < 3) && (c->ssx != ssxmax)) || ((c->height < 3) && (c->ssy != ssymax))) ujThrow(UJ_UNSUPPORTED);
-        size = c->stride * (uj->mbheight * uj->mbsizey * c->ssy / ssymax);
         if (!uj->no_decode) {
-            if (!(c->pixels = malloc(size))) ujThrow(UJ_OUT_OF_MEM);
+            size = c->stride * uj->mbheight * c->ssy << 3;
+            if (!(c->pixels = (unsigned char*) malloc(size))) ujThrow(UJ_OUT_OF_MEM);
             memset(c->pixels, 0x80, size);
         }
     }
@@ -330,6 +341,7 @@ UJ_INLINE void ujDecodeDHT(ujContext *uj) {
     ujVLCCode *vlc;
     static unsigned char counts[16];
     ujDecodeLength(uj);
+    ujCheckError();
     while (uj->length >= 17) {
         i = uj->pos[0];
         if (i & 0xEC) ujThrow(UJ_SYNTAX_ERROR);
@@ -369,6 +381,7 @@ UJ_INLINE void ujDecodeDQT(ujContext *uj) {
     int i;
     unsigned char *t;
     ujDecodeLength(uj);
+    ujCheckError();
     while (uj->length >= 65) {
         i = uj->pos[0];
         if (i & 0xFC) ujThrow(UJ_SYNTAX_ERROR);
@@ -383,6 +396,7 @@ UJ_INLINE void ujDecodeDQT(ujContext *uj) {
 
 UJ_INLINE void ujDecodeDRI(ujContext *uj) {
     ujDecodeLength(uj);
+    ujCheckError();
     if (uj->length < 2) ujThrow(UJ_SYNTAX_ERROR);
     uj->rstinterval = ujDecode16(uj->pos);
     ujSkip(uj, uj->length);
@@ -428,6 +442,7 @@ UJ_INLINE void ujDecodeScan(ujContext *uj) {
     int rstcount = uj->rstinterval, nextrst = 0;
     ujComponent* c;
     ujDecodeLength(uj);
+    ujCheckError();
     if (uj->length < (4 + 2 * uj->ncomp)) ujThrow(UJ_SYNTAX_ERROR);
     if (uj->pos[0] != uj->ncomp) ujThrow(UJ_UNSUPPORTED);
     ujSkip(uj, 1);
@@ -490,7 +505,7 @@ UJ_INLINE void ujUpsampleHCentered(ujComponent* c) {
     const int xmax = c->width - 3;
     unsigned char *out, *lin, *lout;
     int x, y;
-    out = malloc((c->width * c->height) << 1);
+    out = (unsigned char*) malloc((c->width * c->height) << 1);
     if (!out) ujThrow(UJ_OUT_OF_MEM);
     lin = c->pixels;
     lout = out;
@@ -510,7 +525,7 @@ UJ_INLINE void ujUpsampleHCentered(ujComponent* c) {
     }
     c->width <<= 1;
     c->stride = c->width;
-    free(c->pixels);
+    free((void*) c->pixels);
     c->pixels = out;
 }
 
@@ -518,7 +533,7 @@ UJ_INLINE void ujUpsampleVCentered(ujComponent* c) {
     const int w = c->width, s1 = c->stride, s2 = s1 + s1;
     unsigned char *out, *cin, *cout;
     int x, y;
-    out = malloc((c->width * c->height) << 1);
+    out = (unsigned char*) malloc((c->width * c->height) << 1);
     if (!out) ujThrow(UJ_OUT_OF_MEM);
     for (x = 0;  x < w;  ++x) {
         cin = &c->pixels[x];
@@ -539,7 +554,7 @@ UJ_INLINE void ujUpsampleVCentered(ujComponent* c) {
     }
     c->height <<= 1;
     c->stride = c->width;
-    free(c->pixels);
+    free((void*) c->pixels);
     c->pixels = out;
 }
 
@@ -549,7 +564,7 @@ UJ_INLINE void ujUpsampleHCoSited(ujComponent* c) {
     const int xmax = c->width - 1;
     unsigned char *out, *lin, *lout;
     int x, y;
-    out = malloc((c->width * c->height) << 1);
+    out = (unsigned char*) malloc((c->width * c->height) << 1);
     if (!out) ujThrow(UJ_OUT_OF_MEM);
     lin = c->pixels;
     lout = out;
@@ -569,7 +584,7 @@ UJ_INLINE void ujUpsampleHCoSited(ujComponent* c) {
     }
     c->width <<= 1;
     c->stride = c->width;
-    free(c->pixels);
+    free((void*) c->pixels);
     c->pixels = out;
 }
 
@@ -577,7 +592,7 @@ UJ_INLINE void ujUpsampleVCoSited(ujComponent* c) {
     const int w = c->width, s1 = c->stride, s2 = s1 + s1;
     unsigned char *out, *cin, *cout;
     int x, y;
-    out = malloc((c->width * c->height) << 1);
+    out = (unsigned char*) malloc((c->width * c->height) << 1);
     if (!out) ujThrow(UJ_OUT_OF_MEM);
     for (x = 0;  x < w;  ++x) {
         cin = &c->pixels[x];
@@ -597,7 +612,7 @@ UJ_INLINE void ujUpsampleVCoSited(ujComponent* c) {
     }
     c->height <<= 1;
     c->stride = c->width;
-    free(c->pixels);
+    free((void*) c->pixels);
     c->pixels = out;
 }
 
@@ -607,7 +622,7 @@ UJ_INLINE void ujUpsampleFast(ujContext *uj, ujComponent* c) {
     while (c->width < uj->width) { c->width <<= 1; ++xshift; }
     while (c->height < uj->height) { c->height <<= 1; ++yshift; }
     if (!xshift && !yshift) return;
-    out = malloc(c->width * c->height);
+    out = (unsigned char*) malloc(c->width * c->height);
     if (!out) ujThrow(UJ_OUT_OF_MEM);
     lin = c->pixels;
     lout = out;
@@ -618,7 +633,7 @@ UJ_INLINE void ujUpsampleFast(ujContext *uj, ujComponent* c) {
         lout += c->width;
     }
     c->stride = c->width;
-    free(c->pixels);
+    free((void*) c->pixels);
     c->pixels = out;
 }
 
@@ -718,6 +733,7 @@ UJ_INLINE void ujDecodeExif(ujContext* uj) {
         return;
     }
     ujDecodeLength(uj);
+    ujCheckError();
     ptr = uj->pos;
     size = uj->length;
     ujSkip(uj, uj->length);
@@ -900,7 +916,7 @@ unsigned char* ujGetImage(ujImage img, unsigned char* dest) {
         return dest;
     } else {
         if (!uj->rgb) {
-            uj->rgb = malloc(uj->width * uj->height * uj->ncomp);
+            uj->rgb = (unsigned char*) malloc(uj->width * uj->height * uj->ncomp);
             if (!uj->rgb) { ujError = UJ_OUT_OF_MEM; return NULL; }
             ujConvert(uj, uj->rgb);
             if (ujError) return NULL;
@@ -916,3 +932,6 @@ void ujDestroy(ujImage img) {
     free(img);
 }
 
+#ifdef __cplusplus
+}
+#endif
