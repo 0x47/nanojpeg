@@ -1,5 +1,5 @@
 // NanoJPEG -- KeyJ's Tiny Baseline JPEG Decoder
-// version 1.3.4 (2016-11-14)
+// version 1.3.5 (2016-11-14)
 // Copyright (c) 2009-2016 Martin J. Fiedler <martin.fiedler@gmx.net>
 // published under the terms of the MIT license
 //
@@ -99,6 +99,10 @@
 // convert JPEG files into PGM or PPM. To compile it, use something like
 //     gcc -O3 -D_NJ_EXAMPLE_PROGRAM -o nanojpeg nanojpeg.c
 // You may also add -std=c99 -Wall -Wextra -pedantic -Werror, if you want :)
+// The only thing you might need is -Wno-shift-negative-value, because this
+// code relies on the target machine using two's complement arithmetic, but
+// the C standard does not, even though *any* practically useful machine
+// nowadays uses two's complement.
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -218,7 +222,7 @@ int main(int argc, char* argv[]) {
     }
     fseek(f, 0, SEEK_END);
     size = (int) ftell(f);
-    buf = malloc(size);
+    buf = (char*) malloc(size);
     fseek(f, 0, SEEK_SET);
     size = (int) fread(buf, 1, size, f);
     fclose(f);
@@ -561,10 +565,10 @@ NJ_INLINE void njDecodeSOF(void) {
         c->height = (nj.height * c->ssy + ssymax - 1) / ssymax;
         c->stride = nj.mbwidth * c->ssx << 3;
         if (((c->width < 3) && (c->ssx != ssxmax)) || ((c->height < 3) && (c->ssy != ssymax))) njThrow(NJ_UNSUPPORTED);
-        if (!(c->pixels = njAllocMem(c->stride * nj.mbheight * c->ssy << 3))) njThrow(NJ_OUT_OF_MEM);
+        if (!(c->pixels = (unsigned char*) njAllocMem(c->stride * nj.mbheight * c->ssy << 3))) njThrow(NJ_OUT_OF_MEM);
     }
     if (nj.ncomp == 3) {
-        nj.rgb = njAllocMem(nj.width * nj.height * nj.ncomp);
+        nj.rgb = (unsigned char*) njAllocMem(nj.width * nj.height * nj.ncomp);
         if (!nj.rgb) njThrow(NJ_OUT_OF_MEM);
     }
     njSkip(nj.length);
@@ -733,7 +737,7 @@ NJ_INLINE void njUpsampleH(nj_component_t* c) {
     const int xmax = c->width - 3;
     unsigned char *out, *lin, *lout;
     int x, y;
-    out = njAllocMem((c->width * c->height) << 1);
+    out = (unsigned char*) njAllocMem((c->width * c->height) << 1);
     if (!out) njThrow(NJ_OUT_OF_MEM);
     lin = c->pixels;
     lout = out;
@@ -753,7 +757,7 @@ NJ_INLINE void njUpsampleH(nj_component_t* c) {
     }
     c->width <<= 1;
     c->stride = c->width;
-    njFreeMem(c->pixels);
+    njFreeMem((void*)c->pixels);
     c->pixels = out;
 }
 
@@ -761,7 +765,7 @@ NJ_INLINE void njUpsampleV(nj_component_t* c) {
     const int w = c->width, s1 = c->stride, s2 = s1 + s1;
     unsigned char *out, *cin, *cout;
     int x, y;
-    out = njAllocMem((c->width * c->height) << 1);
+    out = (unsigned char*) njAllocMem((c->width * c->height) << 1);
     if (!out) njThrow(NJ_OUT_OF_MEM);
     for (x = 0;  x < w;  ++x) {
         cin = &c->pixels[x];
@@ -782,7 +786,7 @@ NJ_INLINE void njUpsampleV(nj_component_t* c) {
     }
     c->height <<= 1;
     c->stride = c->width;
-    njFreeMem(c->pixels);
+    njFreeMem((void*) c->pixels);
     c->pixels = out;
 }
 
@@ -793,7 +797,7 @@ NJ_INLINE void njUpsample(nj_component_t* c) {
     unsigned char *out, *lin, *lout;
     while (c->width < nj.width) { c->width <<= 1; ++xshift; }
     while (c->height < nj.height) { c->height <<= 1; ++yshift; }
-    out = njAllocMem(c->width * c->height);
+    out = (unsigned char*) njAllocMem(c->width * c->height);
     if (!out) njThrow(NJ_OUT_OF_MEM);
     lin = c->pixels;
     lout = out;
@@ -804,7 +808,7 @@ NJ_INLINE void njUpsample(nj_component_t* c) {
         lout += c->width;
     }
     c->stride = c->width;
-    njFreeMem(c->pixels);
+    njFreeMem((void*) c->pixels);
     c->pixels = out;
 }
 
