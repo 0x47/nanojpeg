@@ -671,9 +671,10 @@ UJ_INLINE void ujConvert(ujContext *uj, unsigned char *pout) {
                 register int y = py[x] << 8;
                 register int cb = pcb[x] - 128;
                 register int cr = pcr[x] - 128;
-                *pout++ = ujClip((y            + 359 * cr + 128) >> 8);
-                *pout++ = ujClip((y -  88 * cb - 183 * cr + 128) >> 8);
+                // NOTE: permutated to BGR
                 *pout++ = ujClip((y + 454 * cb            + 128) >> 8);
+                *pout++ = ujClip((y -  88 * cb - 183 * cr + 128) >> 8);
+                *pout++ = ujClip((y            + 359 * cr + 128) >> 8);
             }
             py += uj->comp[0].stride;
             pcb += uj->comp[1].stride;
